@@ -1,0 +1,6 @@
+FROM ubuntu:20.04 
+ENV TZ=Europe/Moscow
+RUN apt-get update -y && apt-get install -y --no-install-recommends software-properties-common ca-certificates gnupg wget sudo
+copy install.sh /tmp
+RUN /tmp/install.sh
+
