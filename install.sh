@@ -41,9 +41,7 @@ gpgkey=https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.
 EOF
     sudo mv /tmp/oneAPI.repo /etc/yum.repos.d
     sudo dnf update -y --refresh
-# Bug with gpu driver dependencies, submitted
-#    sudo dnf install -y intel-opencl intel-media intel-mediasdk intel-oneapi-onevpl-devel 
-    sudo dnf install -y intel-oneapi-onevpl-devel 
+    sudo dnf install -y intel-opencl intel-media intel-mediasdk intel-oneapi-onevpl-devel 
     ;;
 
 ## SuSE
@@ -54,6 +52,6 @@ EOF
     ;;
 
   *)
-    echo -n "Unsupported distirbution, please see documentation for other driver installation options"
+    echo -n "Unsupported distribution, please see documentation for other driver installation options"
     ;;
 esac

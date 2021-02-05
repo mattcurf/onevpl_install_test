@@ -1,6 +1,6 @@
 FROM registry.access.redhat.com/ubi8/ubi:8.2
 ENV TZ=Europe/Moscow
-RUN yum install -y sudo wget rpm
+RUN dnf install -y sudo wget 
 copy install.sh /tmp
 RUN /tmp/install.sh
 
