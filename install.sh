@@ -3,7 +3,7 @@
 #
 # Installs General Purpose GPU Drivers and oneVPL development kit for Linux
 # 
-# See https://software.intel.com/content/www/us/en/develop/topics/graphics-linux-drivers.html and
+# See https://dgpu-docs.intel.com/installation-guides/index.html and
 # https://software.intel.com/content/www/us/en/develop/articles/oneapi-repo-instructions.html
 #
 
