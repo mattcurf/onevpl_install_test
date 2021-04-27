@@ -1,94 +1,150 @@
-FROM ubuntu:20.04 
+FROM ubuntu:20.04
+
+ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe/Moscow
-RUN apt-get update -y && apt-get install -y --no-install-recommends software-properties-common ca-certificates gnupg wget sudo
-
-# Install oneVPL and oneVPL GPU drivers from Agama and oneAPI
-copy install.sh /tmp
-RUN /tmp/install.sh
-
-# Build GSTreamer from source
-
-# COMMON BUILD TOOLS
-RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
-    apt-get install -y -q --no-install-recommends \
-        cmake \
-        build-essential \
-        automake \
-        autoconf \
-        libtool \
-        make \
-        git \
-        wget \
-        pciutils \
-        cpio \
-        libtool \
-        lsb-release \
-        ca-certificates \
-        pkg-config \
-        bison \
-        flex \
-        libcurl4-gnutls-dev \
-        zlib1g-dev \
-        nasm \
-        yasm \
-        libx11-dev \
-        xorg-dev \
-        libgl1-mesa-dev \
-        openbox \
-        python3 \
-        python3-pip \
-        python3-setuptools 
-
-
-# Build x264
-ARG X264_VER=stable
-ARG X264_REPO=https://github.com/mirror/x264
-RUN  git clone ${X264_REPO} && \
-     cd x264 && \
-     git checkout ${X264_VER} && \
-     ./configure --prefix="/usr" --libdir=/usr/lib/x86_64-linux-gnu --enable-shared && \
-     make -j $(nproc) && \
-     make install DESTDIR="/home/build" && \
-     make install
-
-
-# GStreamer core
-RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
-    apt-get install --no-install-recommends -q -y \
-        libglib2.0-dev \
-        libgmp-dev \
-        libgsl-dev \
-        gobject-introspection \
-        libcap-dev \
-        libcap2-bin \
-        gettext \
-        flex \
-        bison \
-        python3 \
-        python3-pip \
-        libgirepository1.0-dev && \
-    pip3 install --no-cache-dir meson ninja
 
 ARG PACKAGE_ORIGIN="https://gstreamer.freedesktop.org"
-
 ARG PREFIX=/usr
 ARG LIBDIR=/usr/lib/x86_64-linux-gnu
 ARG LIBEXECDIR=/usr/lib/x86_64-linux-gnu
-
 #ARG GST_VERSION=1.16.2
 ARG GST_VERSION=1.18.4
 ARG BUILD_TYPE=release
-
 ENV GSTREAMER_LIB_DIR=${LIBDIR}
 ENV LIBRARY_PATH=${GSTREAMER_LIB_DIR}:${GSTREAMER_LIB_DIR}/gstreamer-1.0:${LIBRARY_PATH}
 ENV LD_LIBRARY_PATH=${LIBRARY_PATH}
 ENV PKG_CONFIG_PATH=${GSTREAMER_LIB_DIR}/pkgconfig
+ENV GST_VAAPI_ALL_DRIVERS=1
 
+# install packages
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+    apt-get install --no-install-recommends -q -y \
+    autoconf \
+    automake \
+    autopoint \
+    bc \
+    bison \
+    bzip2 \
+    clang \
+    cmake \
+    debianutils \
+    diffutils \
+    expat \
+    file \
+    findutils \
+    flex \
+    g++ \
+    gawk \
+    gcc \
+    gettext \
+    git-core \
+    git-lfs \
+    libbsd-dev \
+    libclang-dev \
+    libdrm-dev \
+    libedit-dev \
+    libegl1-mesa-dev \
+    libexpat1-dev \
+    libflac-dev \
+    libgl1-mesa-dev \
+    libgles2-mesa-dev \
+    libglib2.0-dev \
+    libgudev-1.0-dev \
+    libjson-glib-dev \
+    libmp3lame-dev \
+    libopencv-dev \
+    libopenscenegraph-dev \
+    liborc-0.4-dev \
+    libpango1.0-dev \
+    libpciaccess-dev \
+    libpython3-dev \
+    libtheora-dev \
+    libtool \
+    libudev-dev \
+    libv4l-dev \
+    libvorbis-dev \
+    libvulkan-dev \
+    libwayland-dev \
+    libx11-dev \
+    libx11-xcb-dev \
+    libxcb-dri2-0-dev \
+    libxcb-glx0-dev \
+    libxcb-xfixes0-dev \
+    libxdamage-dev \
+    libxext-dev \
+    libxfixes-dev \
+    libxrandr-dev \
+    libxrender-dev \
+    libxshmfence-dev \
+    libx264-dev \
+    libx265-dev \
+    libva-dev \
+    llvm-dev \
+    make \
+    nasm \
+    ocl-icd-dev \
+    ocl-icd-opencl-dev \
+    opencl-headers \
+    passwd \
+    patch \
+    pkg-config \
+    python3 \
+    python3-pip \
+    sudo \
+    software-properties-common \
+    x11proto-dri2-dev \
+    x11proto-gl-dev \
+    xutils-dev \
+    xz-utils \
+    yasm \
+  && git lfs install \
+  && pip3 install \
+    attr \
+    bd-metric \
+    distro \
+    lxml \
+    meson \
+    ninja \
+    numpy \
+    scikit-image \
+    slash==1.5.1 \
+  && apt-get -y clean \
+  && apt-get -y autoclean \
+  && echo "%sudo ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/nopass \
+  && useradd -G sudo,video -m media
+
+#  && add-apt-repository -y ppa:intel-opencl/intel-opencl \
+#  && apt-get -y install libigc-dev \
+
+# WA for sudo errors in containers (https://github.com/sudo-project/sudo/issues/42)
+RUN echo "Set disable_coredump false" >> /etc/sudo.conf
+
+#USER media
+WORKDIR /build
 RUN mkdir -p build/src
 
+
+# Install oneVPL and oneVPL GPU drivers from Agama and oneAPI
+#-----------------------
+RUN apt-get update -y && apt-get install -y --no-install-recommends software-properties-common ca-certificates gnupg wget sudo && \
+    wget -qO - https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB | apt-key add - && \
+    wget -qO - https://repositories.intel.com/graphics/intel-graphics.key | apt-key add - && \
+    add-apt-repository "deb https://apt.repos.intel.com/oneapi all main" && \
+    add-apt-repository "deb [arch=amd64] https://repositories.intel.com/graphics/ubuntu focal main" && \
+    apt-get update && \
+    apt-get install -y intel-opencl-icd intel-media-va-driver-non-free libmfx1 intel-oneapi-onevpl-devel
+#ENV PKG_CONFIG_PATH=/opt/intel/mediasdk/lib64/pkgconfig:${PKG_CONFIG_PATH}
+#ENV LIBRARY_PATH=/opt/intel/mediasdk/lib64:${LIBRARY_PATH}
+#ENV LD_LIBRARY_PATH=/opt/intel/mediasdk/lib64:${LD_LIBRARY_PATH}
+#ENV LIBVA_DRIVERS_PATH=/opt/intel/mediasdk/lib64
+ENV LIBVA_DRIVER_NAME=iHD
+
+
+# GStreamer core
+#-----------------------
 ARG GST_REPO=https://gstreamer.freedesktop.org/src/gstreamer/gstreamer-${GST_VERSION}.tar.xz
-RUN wget ${GST_REPO} -O build/src/gstreamer-${GST_VERSION}.tar.xz
-RUN tar xvf build/src/gstreamer-${GST_VERSION}.tar.xz && \
+RUN wget ${GST_REPO} -O build/src/gstreamer-${GST_VERSION}.tar.xz && \
+    tar xvf build/src/gstreamer-${GST_VERSION}.tar.xz && \
     cd gstreamer-${GST_VERSION} && \
     PKG_CONFIG_PATH=$PWD/build/pkgconfig meson \
         -Dexamples=disabled \
@@ -106,53 +162,11 @@ RUN tar xvf build/src/gstreamer-${GST_VERSION}.tar.xz && \
     meson install -C build/
 
 
-# ORC Acceleration
-ARG GST_ORC_VERSION=0.4.31
-ARG GST_ORC_REPO=https://gstreamer.freedesktop.org/src/orc/orc-${GST_ORC_VERSION}.tar.xz
-RUN wget ${GST_ORC_REPO} -O build/src/orc-${GST_ORC_VERSION}.tar.xz
-RUN tar xvf build/src/orc-${GST_ORC_VERSION}.tar.xz && \
-    cd orc-${GST_ORC_VERSION} && \
-    meson \
-        -Dexamples=disabled \
-        -Dtests=disabled \
-        -Dbenchmarks=disabled \
-        -Dgtk_doc=disabled \
-        -Dorc-test=disabled \
-        --prefix=${PREFIX} \
-        --libdir=${LIBDIR} \
-        --libexecdir=${LIBEXECDIR} \
-    build/ && \
-    ninja -C build && \
-    DESTDIR=/home/build meson install -C build/ && \
-    meson install -C build/
-
-
 # GStreamer Base plugins
-RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
-    apt-get install -y -q --no-install-recommends \
-        libx11-dev \
-        iso-codes \
-        libegl1-mesa-dev \
-        libgles2-mesa-dev \
-        libgl-dev \
-        gudev-1.0 \
-        libtheora-dev \
-        libcdparanoia-dev \
-        libpango1.0-dev \
-        libgbm-dev \
-        libasound2-dev \
-        libjpeg-dev \
-        libvisual-0.4-dev \
-        libxv-dev \
-        libopus-dev \
-        libgraphene-1.0-dev \
-        libvorbis-dev
-#        -Dgl=disabled \
-
-# Build the gstreamer plugin base
+#-----------------------
 ARG GST_PLUGIN_BASE_REPO=https://gstreamer.freedesktop.org/src/gst-plugins-base/gst-plugins-base-${GST_VERSION}.tar.xz
-RUN wget ${GST_PLUGIN_BASE_REPO} -O build/src/gst-plugins-base-${GST_VERSION}.tar.xz
-RUN tar xvf build/src/gst-plugins-base-${GST_VERSION}.tar.xz && \
+RUN wget ${GST_PLUGIN_BASE_REPO} -O build/src/gst-plugins-base-${GST_VERSION}.tar.xz && \
+    tar xvf build/src/gst-plugins-base-${GST_VERSION}.tar.xz && \
     cd gst-plugins-base-${GST_VERSION} && \
     PKG_CONFIG_PATH=$PWD/build/pkgconfig:${PKG_CONFIG_PATH} meson \
         -Dexamples=disabled \
@@ -171,40 +185,11 @@ RUN tar xvf build/src/gst-plugins-base-${GST_VERSION}.tar.xz && \
 
 
 # GStreamer Good plugins
-RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
-    apt-get install -y -q --no-install-recommends \
-        libbz2-dev \
-        libv4l-dev \
-        libaa1-dev \
-        libflac-dev \
-        libgdk-pixbuf2.0-dev \
-        libmp3lame-dev \
-        libcaca-dev \
-        libdv4-dev \
-        libmpg123-dev \
-        libraw1394-dev \
-        libavc1394-dev \
-        libiec61883-dev \
-        libpulse-dev \
-        libsoup2.4-dev \
-        libspeex-dev \
-        libtag-extras-dev \
-        libtwolame-dev \
-        libwavpack-dev && \
-    rm -rf /var/lib/apt/lists/*
-
+#-----------------------
 ARG GST_PLUGIN_GOOD_REPO=https://gstreamer.freedesktop.org/src/gst-plugins-good/gst-plugins-good-${GST_VERSION}.tar.xz
-
-# Lines below extract patch needed for Smart City Sample (OVS use case). Patch is applied before building gst-plugins-good
-#RUN  mkdir gst-plugins-good-${GST_VERSION} && \
-#    git clone https://github.com/GStreamer/gst-plugins-good.git && \
-#    cd gst-plugins-good && \
-#    git diff 080eba64de68161026f2b451033d6b455cb92a05 37d22186ffb29a830e8aad2e4d6456484e716fe7 > ../gst-plugins-good-${GST_VERSION}/rtpjitterbuffer-fix.patch
-
-RUN wget ${GST_PLUGIN_GOOD_REPO} -O build/src/gst-plugins-good-${GST_VERSION}.tar.xz
-RUN tar xvf build/src/gst-plugins-good-${GST_VERSION}.tar.xz && \
+RUN wget ${GST_PLUGIN_GOOD_REPO} -O build/src/gst-plugins-good-${GST_VERSION}.tar.xz && \
+    tar xvf build/src/gst-plugins-good-${GST_VERSION}.tar.xz && \
     cd gst-plugins-good-${GST_VERSION}  && \
-#    patch -p1 < rtpjitterbuffer-fix.patch && \
     PKG_CONFIG_PATH=$PWD/build/pkgconfig:${PKG_CONFIG_PATH} meson \
         -Dexamples=disabled \
         -Dtests=disabled \
@@ -222,63 +207,10 @@ RUN tar xvf build/src/gst-plugins-good-${GST_VERSION}.tar.xz && \
 
 
 # GStreamer Bad plugins
-RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
-    apt-get install -y -q --no-install-recommends \
-        libbluetooth-dev \
-        libusb-1.0.0-dev \
-        libass-dev \
-        libbs2b-dev \
-        libchromaprint-dev \
-        liblcms2-dev \
-        libssh2-1-dev \
-        libdc1394-22-dev \
-        libdirectfb-dev \
-        libssh-dev \
-        libdca-dev \
-        libfaac-dev \
-        libfdk-aac-dev \
-        flite1-dev \
-        libfluidsynth-dev \
-        libgme-dev \
-        libgsm1-dev \
-        nettle-dev \
-        libkate-dev \
-        liblrdf0-dev \
-        libde265-dev \
-        libmjpegtools-dev \
-        libmms-dev \
-        libmodplug-dev \
-        libmpcdec-dev \
-        libneon27-dev \
-        libopenal-dev \
-        libopenexr-dev \
-        libopenjp2-7-dev \
-        libopenmpt-dev \
-        libopenni2-dev \
-        libdvdnav-dev \
-        librtmp-dev \
-        librsvg2-dev \
-        libsbc-dev \
-        libsndfile1-dev \
-        libsoundtouch-dev \
-        libspandsp-dev \
-        libsrtp2-dev \
-        libzvbi-dev \
-        libvo-aacenc-dev \
-        libvo-amrwbenc-dev \
-        libwebrtc-audio-processing-dev \
-        libwebp-dev \
-        libwildmidi-dev \
-        libzbar-dev \
-        libnice-dev \
-        libxkbcommon-dev && \
-    rm -rf /var/lib/apt/lists/*
-
-# Uninstalled dependencies: opencv, opencv4, libmfx(waiting intelMSDK), wayland(low version), vdpau
-
+#-----------------------
 ARG GST_PLUGIN_BAD_REPO=https://gstreamer.freedesktop.org/src/gst-plugins-bad/gst-plugins-bad-${GST_VERSION}.tar.xz
-RUN wget ${GST_PLUGIN_BAD_REPO} -O build/src/gst-plugins-bad-${GST_VERSION}.tar.xz
-RUN tar xvf build/src/gst-plugins-bad-${GST_VERSION}.tar.xz && \
+RUN wget ${GST_PLUGIN_BAD_REPO} -O build/src/gst-plugins-bad-${GST_VERSION}.tar.xz && \
+    tar xvf build/src/gst-plugins-bad-${GST_VERSION}.tar.xz && \
     cd gst-plugins-bad-${GST_VERSION} && \
     PKG_CONFIG_PATH=$PWD/build/pkgconfig:${PKG_CONFIG_PATH} meson \
         -Dexamples=disabled \
@@ -306,19 +238,9 @@ RUN tar xvf build/src/gst-plugins-bad-${GST_VERSION}.tar.xz && \
 
 # GStreamer Ugly plugins
 #-----------------------
-RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
-    apt-get install -y -q --no-install-recommends \
-        libmpeg2-4-dev \
-        libopencore-amrnb-dev \
-        libopencore-amrwb-dev \
-        liba52-0.7.4-dev \
-    && rm -rf /var/lib/apt/lists/*
-
 ARG GST_PLUGIN_UGLY_REPO=https://gstreamer.freedesktop.org/src/gst-plugins-ugly/gst-plugins-ugly-${GST_VERSION}.tar.xz
-
-#        -Dx264=disabled \
-RUN wget ${GST_PLUGIN_UGLY_REPO} -O build/src/gst-plugins-ugly-${GST_VERSION}.tar.xz
-RUN tar xvf build/src/gst-plugins-ugly-${GST_VERSION}.tar.xz && \
+RUN wget ${GST_PLUGIN_UGLY_REPO} -O build/src/gst-plugins-ugly-${GST_VERSION}.tar.xz && \
+    tar xvf build/src/gst-plugins-ugly-${GST_VERSION}.tar.xz && \
     cd gst-plugins-ugly-${GST_VERSION}  && \
     PKG_CONFIG_PATH=$PWD/build/pkgconfig:${PKG_CONFIG_PATH} meson \
         -Dexamples=disabled \
@@ -343,25 +265,9 @@ RUN tar xvf build/src/gst-plugins-ugly-${GST_VERSION}.tar.xz && \
 
 # GStreamer VAAPI plugins
 #-----------------------
-#ENV PKG_CONFIG_PATH=/opt/intel/mediasdk/lib64/pkgconfig:${PKG_CONFIG_PATH}
-#ENV LIBRARY_PATH=/opt/intel/mediasdk/lib64:${LIBRARY_PATH}
-#ENV LD_LIBRARY_PATH=/opt/intel/mediasdk/lib64:${LD_LIBRARY_PATH}
-#ENV LIBVA_DRIVERS_PATH=/opt/intel/mediasdk/lib64
-ENV LIBVA_DRIVER_NAME=iHD
-ENV GST_VAAPI_ALL_DRIVERS=1
-
-# Build gstreamer plugin vaapi
 ARG GST_PLUGIN_VAAPI_REPO=https://gstreamer.freedesktop.org/src/gstreamer-vaapi/gstreamer-vaapi-${GST_VERSION}.tar.xz
-ENV GST_VAAPI_ALL_DRIVERS=1
-
-RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
-    apt-get install -y -q --no-install-recommends \
-        libva-dev \
-        libxrandr-dev \
-        libudev-dev 
-
-RUN wget ${GST_PLUGIN_VAAPI_REPO} -O build/src/gstreamer-vaapi-${GST_VERSION}.tar.xz
-RUN tar xvf build/src/gstreamer-vaapi-${GST_VERSION}.tar.xz && \
+RUN wget ${GST_PLUGIN_VAAPI_REPO} -O build/src/gstreamer-vaapi-${GST_VERSION}.tar.xz && \
+    tar xvf build/src/gstreamer-vaapi-${GST_VERSION}.tar.xz && \
     cd gstreamer-vaapi-${GST_VERSION} && \
     PKG_CONFIG_PATH=$PWD/build/pkgconfig:${PKG_CONFIG_PATH} meson \
         -Dexamples=disabled \
