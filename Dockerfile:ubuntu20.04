@@ -1,8 +1,55 @@
 FROM ubuntu:20.04 
 ENV TZ=Europe/Moscow
 RUN apt-get update -y && apt-get install -y --no-install-recommends software-properties-common ca-certificates gnupg wget sudo
+
+# Install oneVPL and oneVPL GPU drivers from Agama and oneAPI
 copy install.sh /tmp
 RUN /tmp/install.sh
+
+# Build GSTreamer from source
+
+# COMMON BUILD TOOLS
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+    apt-get install -y -q --no-install-recommends \
+        cmake \
+        build-essential \
+        automake \
+        autoconf \
+        libtool \
+        make \
+        git \
+        wget \
+        pciutils \
+        cpio \
+        libtool \
+        lsb-release \
+        ca-certificates \
+        pkg-config \
+        bison \
+        flex \
+        libcurl4-gnutls-dev \
+        zlib1g-dev \
+        nasm \
+        yasm \
+        libx11-dev \
+        xorg-dev \
+        libgl1-mesa-dev \
+        openbox \
+        python3 \
+        python3-pip \
+        python3-setuptools 
+
+
+# Build x264
+ARG X264_VER=stable
+ARG X264_REPO=https://github.com/mirror/x264
+RUN  git clone ${X264_REPO} && \
+     cd x264 && \
+     git checkout ${X264_VER} && \
+     ./configure --prefix="/usr" --libdir=/usr/lib/x86_64-linux-gnu --enable-shared && \
+     make -j $(nproc) && \
+     make install DESTDIR="/home/build" && \
+     make install
 
 
 # GStreamer core
@@ -256,7 +303,9 @@ RUN tar xvf build/src/gst-plugins-bad-${GST_VERSION}.tar.xz && \
     DESTDIR=/home/build meson install -C build/ && \
     meson install -C build/
 
-# Build the gstreamer plugin ugly set
+
+# GStreamer Ugly plugins
+#-----------------------
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     apt-get install -y -q --no-install-recommends \
         libmpeg2-4-dev \
@@ -281,6 +330,44 @@ RUN tar xvf build/src/gst-plugins-ugly-${GST_VERSION}.tar.xz && \
         -Dmpeg2dec=disabled \
         -Ddvdread=disabled \
         -Da52dec=disabled \
+        -Dpackage-origin="${PACKAGE_ORIGIN}" \
+        --buildtype=${BUILD_TYPE} \
+        --prefix=${PREFIX} \
+        --libdir=${LIBDIR} \
+        --libexecdir=${LIBEXECDIR} \
+    build/ && \
+    ninja -C build && \
+    DESTDIR=/home/build meson install -C build/ && \
+    meson install -C build/
+
+
+# GStreamer VAAPI plugins
+#-----------------------
+#ENV PKG_CONFIG_PATH=/opt/intel/mediasdk/lib64/pkgconfig:${PKG_CONFIG_PATH}
+#ENV LIBRARY_PATH=/opt/intel/mediasdk/lib64:${LIBRARY_PATH}
+#ENV LD_LIBRARY_PATH=/opt/intel/mediasdk/lib64:${LD_LIBRARY_PATH}
+#ENV LIBVA_DRIVERS_PATH=/opt/intel/mediasdk/lib64
+ENV LIBVA_DRIVER_NAME=iHD
+ENV GST_VAAPI_ALL_DRIVERS=1
+
+# Build gstreamer plugin vaapi
+ARG GST_PLUGIN_VAAPI_REPO=https://gstreamer.freedesktop.org/src/gstreamer-vaapi/gstreamer-vaapi-${GST_VERSION}.tar.xz
+ENV GST_VAAPI_ALL_DRIVERS=1
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+    apt-get install -y -q --no-install-recommends \
+        libva-dev \
+        libxrandr-dev \
+        libudev-dev 
+
+RUN wget ${GST_PLUGIN_VAAPI_REPO} -O build/src/gstreamer-vaapi-${GST_VERSION}.tar.xz
+RUN tar xvf build/src/gstreamer-vaapi-${GST_VERSION}.tar.xz && \
+    cd gstreamer-vaapi-${GST_VERSION} && \
+    PKG_CONFIG_PATH=$PWD/build/pkgconfig:${PKG_CONFIG_PATH} meson \
+        -Dexamples=disabled \
+        -Dtests=disabled \
+        -Dgtk_doc=disabled \
+        -Dnls=disabled \
         -Dpackage-origin="${PACKAGE_ORIGIN}" \
         --buildtype=${BUILD_TYPE} \
         --prefix=${PREFIX} \

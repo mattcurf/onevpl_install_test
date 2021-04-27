@@ -1,6 +1,0 @@
-FROM opensuse/leap 
-ENV TZ=Europe/Moscow
-RUN zypper --non-interactive update && zypper --non-interactive install sudo 
-copy install.sh /tmp
-RUN /tmp/install.sh
-
