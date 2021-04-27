@@ -4,3 +4,289 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends software-pro
 copy install.sh /tmp
 RUN /tmp/install.sh
 
+
+# GStreamer core
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+    apt-get install --no-install-recommends -q -y \
+        libglib2.0-dev \
+        libgmp-dev \
+        libgsl-dev \
+        gobject-introspection \
+        libcap-dev \
+        libcap2-bin \
+        gettext \
+        flex \
+        bison \
+        python3 \
+        python3-pip \
+        libgirepository1.0-dev && \
+    pip3 install --no-cache-dir meson ninja
+
+ARG PACKAGE_ORIGIN="https://gstreamer.freedesktop.org"
+
+ARG PREFIX=/usr
+ARG LIBDIR=/usr/lib/x86_64-linux-gnu
+ARG LIBEXECDIR=/usr/lib/x86_64-linux-gnu
+
+#ARG GST_VERSION=1.16.2
+ARG GST_VERSION=1.18.4
+ARG BUILD_TYPE=release
+
+ENV GSTREAMER_LIB_DIR=${LIBDIR}
+ENV LIBRARY_PATH=${GSTREAMER_LIB_DIR}:${GSTREAMER_LIB_DIR}/gstreamer-1.0:${LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=${LIBRARY_PATH}
+ENV PKG_CONFIG_PATH=${GSTREAMER_LIB_DIR}/pkgconfig
+
+RUN mkdir -p build/src
+
+ARG GST_REPO=https://gstreamer.freedesktop.org/src/gstreamer/gstreamer-${GST_VERSION}.tar.xz
+RUN wget ${GST_REPO} -O build/src/gstreamer-${GST_VERSION}.tar.xz
+RUN tar xvf build/src/gstreamer-${GST_VERSION}.tar.xz && \
+    cd gstreamer-${GST_VERSION} && \
+    PKG_CONFIG_PATH=$PWD/build/pkgconfig meson \
+        -Dexamples=disabled \
+        -Dtests=disabled \
+        -Dbenchmarks=disabled \
+        -Dgtk_doc=disabled \
+        -Dpackage-origin="${PACKAGE_ORIGIN}" \
+        --buildtype=${BUILD_TYPE} \
+        --prefix=${PREFIX} \
+        --libdir=${LIBDIR} \
+        --libexecdir=${LIBEXECDIR} \
+    build/ && \
+    ninja -C build && \
+    DESTDIR=/home/build meson install -C build/ && \
+    meson install -C build/
+
+
+# ORC Acceleration
+ARG GST_ORC_VERSION=0.4.31
+ARG GST_ORC_REPO=https://gstreamer.freedesktop.org/src/orc/orc-${GST_ORC_VERSION}.tar.xz
+RUN wget ${GST_ORC_REPO} -O build/src/orc-${GST_ORC_VERSION}.tar.xz
+RUN tar xvf build/src/orc-${GST_ORC_VERSION}.tar.xz && \
+    cd orc-${GST_ORC_VERSION} && \
+    meson \
+        -Dexamples=disabled \
+        -Dtests=disabled \
+        -Dbenchmarks=disabled \
+        -Dgtk_doc=disabled \
+        -Dorc-test=disabled \
+        --prefix=${PREFIX} \
+        --libdir=${LIBDIR} \
+        --libexecdir=${LIBEXECDIR} \
+    build/ && \
+    ninja -C build && \
+    DESTDIR=/home/build meson install -C build/ && \
+    meson install -C build/
+
+
+# GStreamer Base plugins
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+    apt-get install -y -q --no-install-recommends \
+        libx11-dev \
+        iso-codes \
+        libegl1-mesa-dev \
+        libgles2-mesa-dev \
+        libgl-dev \
+        gudev-1.0 \
+        libtheora-dev \
+        libcdparanoia-dev \
+        libpango1.0-dev \
+        libgbm-dev \
+        libasound2-dev \
+        libjpeg-dev \
+        libvisual-0.4-dev \
+        libxv-dev \
+        libopus-dev \
+        libgraphene-1.0-dev \
+        libvorbis-dev
+#        -Dgl=disabled \
+
+# Build the gstreamer plugin base
+ARG GST_PLUGIN_BASE_REPO=https://gstreamer.freedesktop.org/src/gst-plugins-base/gst-plugins-base-${GST_VERSION}.tar.xz
+RUN wget ${GST_PLUGIN_BASE_REPO} -O build/src/gst-plugins-base-${GST_VERSION}.tar.xz
+RUN tar xvf build/src/gst-plugins-base-${GST_VERSION}.tar.xz && \
+    cd gst-plugins-base-${GST_VERSION} && \
+    PKG_CONFIG_PATH=$PWD/build/pkgconfig:${PKG_CONFIG_PATH} meson \
+        -Dexamples=disabled \
+        -Dtests=disabled \
+        -Dgtk_doc=disabled \
+        -Dnls=disabled \
+        -Dpackage-origin="${PACKAGE_ORIGIN}" \
+        --buildtype=${BUILD_TYPE} \
+        --prefix=${PREFIX} \
+        --libdir=${LIBDIR} \
+        --libexecdir=${LIBEXECDIR} \
+    build/ && \
+    ninja -C build && \
+    DESTDIR=/home/build meson install -C build/ && \
+    meson install -C build/
+
+
+# GStreamer Good plugins
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+    apt-get install -y -q --no-install-recommends \
+        libbz2-dev \
+        libv4l-dev \
+        libaa1-dev \
+        libflac-dev \
+        libgdk-pixbuf2.0-dev \
+        libmp3lame-dev \
+        libcaca-dev \
+        libdv4-dev \
+        libmpg123-dev \
+        libraw1394-dev \
+        libavc1394-dev \
+        libiec61883-dev \
+        libpulse-dev \
+        libsoup2.4-dev \
+        libspeex-dev \
+        libtag-extras-dev \
+        libtwolame-dev \
+        libwavpack-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+ARG GST_PLUGIN_GOOD_REPO=https://gstreamer.freedesktop.org/src/gst-plugins-good/gst-plugins-good-${GST_VERSION}.tar.xz
+
+# Lines below extract patch needed for Smart City Sample (OVS use case). Patch is applied before building gst-plugins-good
+#RUN  mkdir gst-plugins-good-${GST_VERSION} && \
+#    git clone https://github.com/GStreamer/gst-plugins-good.git && \
+#    cd gst-plugins-good && \
+#    git diff 080eba64de68161026f2b451033d6b455cb92a05 37d22186ffb29a830e8aad2e4d6456484e716fe7 > ../gst-plugins-good-${GST_VERSION}/rtpjitterbuffer-fix.patch
+
+RUN wget ${GST_PLUGIN_GOOD_REPO} -O build/src/gst-plugins-good-${GST_VERSION}.tar.xz
+RUN tar xvf build/src/gst-plugins-good-${GST_VERSION}.tar.xz && \
+    cd gst-plugins-good-${GST_VERSION}  && \
+#    patch -p1 < rtpjitterbuffer-fix.patch && \
+    PKG_CONFIG_PATH=$PWD/build/pkgconfig:${PKG_CONFIG_PATH} meson \
+        -Dexamples=disabled \
+        -Dtests=disabled \
+        -Dgtk_doc=disabled \
+        -Dnls=disabled \
+        -Dpackage-origin="${PACKAGE_ORIGIN}" \
+        --buildtype=${BUILD_TYPE} \
+        --prefix=${PREFIX} \
+        --libdir=${LIBDIR} \
+        --libexecdir=${LIBEXECDIR} \
+    build/ && \
+    ninja -C build && \
+    DESTDIR=/home/build meson install -C build/ && \
+    meson install -C build/
+
+
+# GStreamer Bad plugins
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+    apt-get install -y -q --no-install-recommends \
+        libbluetooth-dev \
+        libusb-1.0.0-dev \
+        libass-dev \
+        libbs2b-dev \
+        libchromaprint-dev \
+        liblcms2-dev \
+        libssh2-1-dev \
+        libdc1394-22-dev \
+        libdirectfb-dev \
+        libssh-dev \
+        libdca-dev \
+        libfaac-dev \
+        libfdk-aac-dev \
+        flite1-dev \
+        libfluidsynth-dev \
+        libgme-dev \
+        libgsm1-dev \
+        nettle-dev \
+        libkate-dev \
+        liblrdf0-dev \
+        libde265-dev \
+        libmjpegtools-dev \
+        libmms-dev \
+        libmodplug-dev \
+        libmpcdec-dev \
+        libneon27-dev \
+        libopenal-dev \
+        libopenexr-dev \
+        libopenjp2-7-dev \
+        libopenmpt-dev \
+        libopenni2-dev \
+        libdvdnav-dev \
+        librtmp-dev \
+        librsvg2-dev \
+        libsbc-dev \
+        libsndfile1-dev \
+        libsoundtouch-dev \
+        libspandsp-dev \
+        libsrtp2-dev \
+        libzvbi-dev \
+        libvo-aacenc-dev \
+        libvo-amrwbenc-dev \
+        libwebrtc-audio-processing-dev \
+        libwebp-dev \
+        libwildmidi-dev \
+        libzbar-dev \
+        libnice-dev \
+        libxkbcommon-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# Uninstalled dependencies: opencv, opencv4, libmfx(waiting intelMSDK), wayland(low version), vdpau
+
+ARG GST_PLUGIN_BAD_REPO=https://gstreamer.freedesktop.org/src/gst-plugins-bad/gst-plugins-bad-${GST_VERSION}.tar.xz
+RUN wget ${GST_PLUGIN_BAD_REPO} -O build/src/gst-plugins-bad-${GST_VERSION}.tar.xz
+RUN tar xvf build/src/gst-plugins-bad-${GST_VERSION}.tar.xz && \
+    cd gst-plugins-bad-${GST_VERSION} && \
+    PKG_CONFIG_PATH=$PWD/build/pkgconfig:${PKG_CONFIG_PATH} meson \
+        -Dexamples=disabled \
+        -Dtests=disabled \
+        -Ddoc=disabled \
+        -Dnls=disabled \
+        -Dx265=disabled \
+        -Dyadif=disabled \
+        -Dresindvd=disabled \
+        -Dmplex=disabled \
+        -Ddts=disabled \
+        -Dofa=disabled \
+        -Dfaad=disabled \
+        -Dmpeg2enc=disabled \
+        -Dpackage-origin="${PACKAGE_ORIGIN}" \
+        --buildtype=${BUILD_TYPE} \
+        --prefix=${PREFIX} \
+        --libdir=${LIBDIR} \
+        --libexecdir=${LIBEXECDIR} \
+    build/ && \
+    ninja -C build && \
+    DESTDIR=/home/build meson install -C build/ && \
+    meson install -C build/
+
+# Build the gstreamer plugin ugly set
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+    apt-get install -y -q --no-install-recommends \
+        libmpeg2-4-dev \
+        libopencore-amrnb-dev \
+        libopencore-amrwb-dev \
+        liba52-0.7.4-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+ARG GST_PLUGIN_UGLY_REPO=https://gstreamer.freedesktop.org/src/gst-plugins-ugly/gst-plugins-ugly-${GST_VERSION}.tar.xz
+
+#        -Dx264=disabled \
+RUN wget ${GST_PLUGIN_UGLY_REPO} -O build/src/gst-plugins-ugly-${GST_VERSION}.tar.xz
+RUN tar xvf build/src/gst-plugins-ugly-${GST_VERSION}.tar.xz && \
+    cd gst-plugins-ugly-${GST_VERSION}  && \
+    PKG_CONFIG_PATH=$PWD/build/pkgconfig:${PKG_CONFIG_PATH} meson \
+        -Dexamples=disabled \
+        -Dtests=disabled \
+        -Dgtk_doc=disabled \
+        -Dnls=disabled \
+        -Dcdio=disabled \
+        -Dsid=disabled \
+        -Dmpeg2dec=disabled \
+        -Ddvdread=disabled \
+        -Da52dec=disabled \
+        -Dpackage-origin="${PACKAGE_ORIGIN}" \
+        --buildtype=${BUILD_TYPE} \
+        --prefix=${PREFIX} \
+        --libdir=${LIBDIR} \
+        --libexecdir=${LIBEXECDIR} \
+    build/ && \
+    ninja -C build && \
+    DESTDIR=/home/build meson install -C build/ && \
+    meson install -C build/

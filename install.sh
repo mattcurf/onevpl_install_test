@@ -26,7 +26,7 @@ case "$DISTRO_NAME $DISTRO_VER" in
     ;;
 
 ## RHEL
-  "rhel 8.2")
+  "rhel 8.2" | "centos 8")
     sudo dnf install -y 'dnf-command(config-manager)'
     sudo dnf config-manager --add-repo https://repositories.intel.com/graphics/rhel/8.2/intel-graphics.repo
 
@@ -52,6 +52,6 @@ EOF
     ;;
 
   *)
-    echo -n "Unsupported distribution, please see documentation for other driver installation options"
+    echo -n "$DISTRO_NAME $DISTRO_VER Unsupported distribution, please see documentation for other driver installation options"
     ;;
 esac
