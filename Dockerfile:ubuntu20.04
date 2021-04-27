@@ -119,7 +119,6 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
 # WA for sudo errors in containers (https://github.com/sudo-project/sudo/issues/42)
 RUN echo "Set disable_coredump false" >> /etc/sudo.conf
 
-#USER media
 WORKDIR /build
 RUN mkdir -p build/src
 
@@ -133,10 +132,18 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends software-pro
     add-apt-repository "deb [arch=amd64] https://repositories.intel.com/graphics/ubuntu focal main" && \
     apt-get update && \
     apt-get install -y intel-opencl-icd intel-media-va-driver-non-free libmfx1 intel-oneapi-onevpl-devel
-#ENV PKG_CONFIG_PATH=/opt/intel/mediasdk/lib64/pkgconfig:${PKG_CONFIG_PATH}
-#ENV LIBRARY_PATH=/opt/intel/mediasdk/lib64:${LIBRARY_PATH}
-#ENV LD_LIBRARY_PATH=/opt/intel/mediasdk/lib64:${LD_LIBRARY_PATH}
-#ENV LIBVA_DRIVERS_PATH=/opt/intel/mediasdk/lib64
+
+ENV CMAKE_PREFIX_PATH=/opt/intel/oneapi/vpl
+ENV CPATH=/opt/intel/oneapi/vpl/2021.2.2/include
+ENV LD_LIBRARY_PATH=/opt/intel/oneapi/vpl/2021.2.2/lib:${LD_LIBRARY_PATH}
+ENV LIBRARY_PATH=/opt/intel/oneapi/vpl/2021.2.2/lib:${LIBRARY_PATH}
+ENV PATH=/opt/intel/oneapi/vpl/2021.2.2/bin:${PATH}
+ENV PKG_CONFIG_PATH=/opt/intel/oneapi/vpl/2021.2.2/lib/pkgconfig:${PKG_CONFIG_PATH}
+ENV VPL_BIN=/opt/intel/oneapi/vpl/2021.2.2/bin
+ENV VPL_INCLUDE=/opt/intel/oneapi/vpl/2021.2.2/include
+ENV VPL_LIB=/opt/intel/oneapi/vpl/2021.2.2/lib
+ENV VPL_ROOT=/opt/intel/oneapi/vpl/2021.2.2
+ENV ONEAPI_ROOT=/opt/intel/oneapi
 ENV LIBVA_DRIVER_NAME=iHD
 
 
