@@ -133,6 +133,9 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends software-pro
     apt-get update && \
     apt-get install -y intel-opencl-icd intel-media-va-driver-non-free libmfx1 intel-oneapi-onevpl-devel
 
+# Workaround for meson
+COPY vpl.pc /opt/intel/oneapi/vpl/2021.2.2/lib/pkgconfig/vpl.pc
+
 ENV CMAKE_PREFIX_PATH=/opt/intel/oneapi/vpl
 ENV CPATH=/opt/intel/oneapi/vpl/2021.2.2/include
 ENV LD_LIBRARY_PATH=/opt/intel/oneapi/vpl/2021.2.2/lib:${LD_LIBRARY_PATH}
@@ -149,10 +152,8 @@ ENV LIBVA_DRIVER_NAME=iHD
 
 # GStreamer core
 #-----------------------
-ARG GST_REPO=https://gstreamer.freedesktop.org/src/gstreamer/gstreamer-${GST_VERSION}.tar.xz
-RUN wget ${GST_REPO} -O build/src/gstreamer-${GST_VERSION}.tar.xz && \
-    tar xvf build/src/gstreamer-${GST_VERSION}.tar.xz && \
-    cd gstreamer-${GST_VERSION} && \
+RUN git clone https://gitlab.freedesktop.org/gstreamer/gstreamer.git && \
+    cd gstreamer && \
     PKG_CONFIG_PATH=$PWD/build/pkgconfig meson \
         -Dexamples=disabled \
         -Dtests=disabled \
@@ -171,10 +172,8 @@ RUN wget ${GST_REPO} -O build/src/gstreamer-${GST_VERSION}.tar.xz && \
 
 # GStreamer Base plugins
 #-----------------------
-ARG GST_PLUGIN_BASE_REPO=https://gstreamer.freedesktop.org/src/gst-plugins-base/gst-plugins-base-${GST_VERSION}.tar.xz
-RUN wget ${GST_PLUGIN_BASE_REPO} -O build/src/gst-plugins-base-${GST_VERSION}.tar.xz && \
-    tar xvf build/src/gst-plugins-base-${GST_VERSION}.tar.xz && \
-    cd gst-plugins-base-${GST_VERSION} && \
+RUN git clone https://gitlab.freedesktop.org/gstreamer/gst-plugins-base.git && \
+    cd gst-plugins-base && \
     PKG_CONFIG_PATH=$PWD/build/pkgconfig:${PKG_CONFIG_PATH} meson \
         -Dexamples=disabled \
         -Dtests=disabled \
@@ -193,10 +192,8 @@ RUN wget ${GST_PLUGIN_BASE_REPO} -O build/src/gst-plugins-base-${GST_VERSION}.ta
 
 # GStreamer Good plugins
 #-----------------------
-ARG GST_PLUGIN_GOOD_REPO=https://gstreamer.freedesktop.org/src/gst-plugins-good/gst-plugins-good-${GST_VERSION}.tar.xz
-RUN wget ${GST_PLUGIN_GOOD_REPO} -O build/src/gst-plugins-good-${GST_VERSION}.tar.xz && \
-    tar xvf build/src/gst-plugins-good-${GST_VERSION}.tar.xz && \
-    cd gst-plugins-good-${GST_VERSION}  && \
+RUN git clone https://gitlab.freedesktop.org/gstreamer/gst-plugins-good.git && \
+    cd gst-plugins-good && \
     PKG_CONFIG_PATH=$PWD/build/pkgconfig:${PKG_CONFIG_PATH} meson \
         -Dexamples=disabled \
         -Dtests=disabled \
@@ -215,11 +212,17 @@ RUN wget ${GST_PLUGIN_GOOD_REPO} -O build/src/gst-plugins-good-${GST_VERSION}.ta
 
 # GStreamer Bad plugins
 #-----------------------
-ARG GST_PLUGIN_BAD_REPO=https://gstreamer.freedesktop.org/src/gst-plugins-bad/gst-plugins-bad-${GST_VERSION}.tar.xz
-RUN wget ${GST_PLUGIN_BAD_REPO} -O build/src/gst-plugins-bad-${GST_VERSION}.tar.xz && \
-    tar xvf build/src/gst-plugins-bad-${GST_VERSION}.tar.xz && \
-    cd gst-plugins-bad-${GST_VERSION} && \
+RUN git clone https://github.com/intel-media-ci/cartwheel-gst-plugins-bad --recursive && \
+    cd cartwheel-gst-plugins-bad/gst-plugins-bad && \
+    git config --global user.email "dev@example.com" && \
+    git config --global user.name "dev" && \
+    git checkout -b dev && \
+    git am ../patches/*.patch && \
+    cd .. && \
+    git pull --rebase --recurse-submodule && \
+    cd gst-plugins-bad && \
     PKG_CONFIG_PATH=$PWD/build/pkgconfig:${PKG_CONFIG_PATH} meson \
+        -Dmfx_api=oneVPL \
         -Dexamples=disabled \
         -Dtests=disabled \
         -Ddoc=disabled \
@@ -245,10 +248,8 @@ RUN wget ${GST_PLUGIN_BAD_REPO} -O build/src/gst-plugins-bad-${GST_VERSION}.tar.
 
 # GStreamer Ugly plugins
 #-----------------------
-ARG GST_PLUGIN_UGLY_REPO=https://gstreamer.freedesktop.org/src/gst-plugins-ugly/gst-plugins-ugly-${GST_VERSION}.tar.xz
-RUN wget ${GST_PLUGIN_UGLY_REPO} -O build/src/gst-plugins-ugly-${GST_VERSION}.tar.xz && \
-    tar xvf build/src/gst-plugins-ugly-${GST_VERSION}.tar.xz && \
-    cd gst-plugins-ugly-${GST_VERSION}  && \
+RUN git clone https://gitlab.freedesktop.org/gstreamer/gst-plugins-ugly.git && \
+    cd gst-plugins-ugly && \
     PKG_CONFIG_PATH=$PWD/build/pkgconfig:${PKG_CONFIG_PATH} meson \
         -Dexamples=disabled \
         -Dtests=disabled \
@@ -272,10 +273,8 @@ RUN wget ${GST_PLUGIN_UGLY_REPO} -O build/src/gst-plugins-ugly-${GST_VERSION}.ta
 
 # GStreamer VAAPI plugins
 #-----------------------
-ARG GST_PLUGIN_VAAPI_REPO=https://gstreamer.freedesktop.org/src/gstreamer-vaapi/gstreamer-vaapi-${GST_VERSION}.tar.xz
-RUN wget ${GST_PLUGIN_VAAPI_REPO} -O build/src/gstreamer-vaapi-${GST_VERSION}.tar.xz && \
-    tar xvf build/src/gstreamer-vaapi-${GST_VERSION}.tar.xz && \
-    cd gstreamer-vaapi-${GST_VERSION} && \
+RUN git clone https://gitlab.freedesktop.org/gstreamer/gstreamer-vaapi.git && \
+    cd gstreamer-vaapi && \
     PKG_CONFIG_PATH=$PWD/build/pkgconfig:${PKG_CONFIG_PATH} meson \
         -Dexamples=disabled \
         -Dtests=disabled \
