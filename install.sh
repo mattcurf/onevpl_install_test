@@ -13,6 +13,7 @@ if [ -f /etc/os-release ]; then
 fi
 
 cd /tmp
+echo $DISTRO_NAME $DISTRO_VER
 case "$DISTRO_NAME $DISTRO_VER" in
 
 ## Ubuntu
@@ -25,8 +26,8 @@ case "$DISTRO_NAME $DISTRO_VER" in
     sudo apt-get install -y intel-opencl-icd intel-media-va-driver-non-free libmfx1 intel-oneapi-onevpl-devel
     ;;
 
-## RHEL
-  "rhel 8.2")
+## Centos8 
+  "centos 8")
     sudo dnf install -y 'dnf-command(config-manager)'
     sudo dnf config-manager --add-repo https://repositories.intel.com/graphics/rhel/8.2/intel-graphics.repo
 

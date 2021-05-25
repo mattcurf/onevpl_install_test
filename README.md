@@ -8,7 +8,7 @@ https://software.intel.com/content/www/us/en/develop/articles/oneapi-repo-instru
 
 ## To run
 
-The following command will demonstrate use of the single install script for Ubuntu 20.04, SUSE 15 SP2, and RHEL 8.2 docker images.
+The following command will demonstrate use of the single install script for Ubuntu 20.04, SUSE 15 SP2, and Centos 8 docker images.
 
 ```bash
 $ ./build.sh
