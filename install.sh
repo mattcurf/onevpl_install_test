@@ -17,6 +17,14 @@ echo $DISTRO_NAME $DISTRO_VER
 case "$DISTRO_NAME $DISTRO_VER" in
 
 ## Ubuntu
+  "ubuntu 18.04")
+    wget -qO - https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB | apt-key add - 
+    sudo add-apt-repository "deb https://apt.repos.intel.com/oneapi all main"
+    sudo apt-get update
+    sudo apt-get install -y intel-oneapi-onevpl-devel
+    wget -qO - https://github.com/Intel-Media-SDK/MediaSDK/releases/download/intel-mediasdk-21.1.3/MediaStack.tar.gz | tar -xz --strip 1 -C /
+    ;;
+
   "ubuntu 20.04")
     wget -qO - https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB | apt-key add - 
     wget -qO - https://repositories.intel.com/graphics/intel-graphics.key | apt-key add - 

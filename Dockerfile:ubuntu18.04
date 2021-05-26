@@ -1,0 +1,10 @@
+FROM ubuntu:18.04 
+ENV TZ=Europe/Moscow
+RUN apt-get update -y && apt-get install -y --no-install-recommends software-properties-common ca-certificates gnupg wget sudo
+copy install.sh /tmp
+RUN /tmp/install.sh
+ENV PATH=/opt/intel/mediasdk/bin:${PATH}
+ENV LD_LIBRARY_PATH=/opt/intel/mediasdk/lib64:${LD_LIBRARY_PATH}
+ENV PKG_CONFIG_PATH=/opt/intel/mediasdk/lib64/pkgconfig:${PKG_CONFIG_PATH}
+ENV LIBVA_DRIVER_NAME=iHD
+
