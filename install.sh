@@ -21,7 +21,7 @@ case "$DISTRO_NAME $DISTRO_VER" in
     wget -qO - https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB | apt-key add - 
     sudo add-apt-repository "deb https://apt.repos.intel.com/oneapi all main"
     sudo apt-get update
-    sudo apt-get install -y intel-oneapi-onevpl-devel
+    sudo apt-get install -y libdrm-dev libva-dev intel-oneapi-onevpl-devel
     wget -qO - https://github.com/Intel-Media-SDK/MediaSDK/releases/download/intel-mediasdk-21.1.3/MediaStack.tar.gz | tar -xz --strip 1 -C /
     ;;
 
@@ -31,7 +31,7 @@ case "$DISTRO_NAME $DISTRO_VER" in
     sudo add-apt-repository "deb https://apt.repos.intel.com/oneapi all main"
     sudo add-apt-repository "deb [arch=amd64] https://repositories.intel.com/graphics/ubuntu focal main"
     sudo apt-get update
-    sudo apt-get install -y intel-opencl-icd intel-media-va-driver-non-free libmfx1 intel-oneapi-onevpl-devel
+    sudo apt-get install -y libdrm-dev libva-dev intel-media-va-driver-non-free libmfx1 intel-oneapi-onevpl-devel
     ;;
 
 ## Centos8 
